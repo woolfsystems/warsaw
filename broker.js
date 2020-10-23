@@ -1,32 +1,37 @@
-const ascoltatori = require('ascoltatori')
-const errors = require('common-errors')
+import ascoltatori from 'ascoltatori'
+import errors from 'common-errors'
 
-const SERVICE_TOPIC = 'service'
+const SERVICE_CHANNEL = '__SERVICE__'
+const CALL_CHANNEL = '__CALL__'
 
 class DustBroker{
-    constructor(){
+    constructor(serviceList = []){
         this.setupPubSub().then(()=>
-            this.loadServices())
+            this.loadServices(serviceList))
     }
     setupServiceListener(){
-        this.pubsub.subscribe(SERVICE_TOPIC, function(_,serviceSchema) {
+        this.pubsub.subscribe(SERVICE_CHANNEL, function(_,serviceSchema) {
             console.log('[sub]','new service',serviceSchema)
         })
     }
     setupPubSub(){
         throw new errors.NotImplementedError("PubSub handler 'setupPubSub' has not been implemented.")
     }
-    loadServices(){
-        this.addService(this.node_id,{name: 'test', actions: ['blah']})
+    loadServices(serviceList){
+        serviceList.forEach(serviceClass =>
+            this.addService(this.node_id, serviceClass))
     }
-    addService(node, serviceSchema){
-        this.pubsub.publish(SERVICE_TOPIC, serviceSchema, function() {
+    addService(node, serviceClass){
+        this.pubsub.publish(SERVICE_CHANNEL, serviceClass.extractSchema(), function() {
             console.log('[pub]')
         })
     }
+    call(serviceRef){
+        console.log('[call]',serviceRef)
+    }
 }
 
-class DustBrokerAscoltatori extends DustBroker{ 
+class DustBrokerAscoltatori extends DustBroker{
     setupPubSub(){
         return new Promise((resolve, reject)=>
             ascoltatori.build((err, ascoltatore) => {
@@ -39,4 +44,7 @@ class DustBrokerAscoltatori extends DustBroker{
     }
 }
 
-new DustBrokerAscoltatori()
+export {
+    DustBroker,
+    DustBrokerAscoltatori
+}
