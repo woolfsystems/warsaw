@@ -1,7 +1,9 @@
-import {DustBrokerAscoltatori as DustBroker} from './broker.js'
-import {DustService} from './service.js'
+import {DustBrokerAscoltatori, DustBroker} from './broker/index.js'
+import {DustService} from './service/index.js'
+import {DustGateway, DustGatewaySocketIO, DustGatewayExpressStatic} from './gateway/index.js'
 
 export {
-    DustBroker,
-    DustService
+    DustBroker,DustBrokerAscoltatori,
+    DustService,
+    DustGateway,DustGatewaySocketIO,DustGatewayExpressStatic
 }

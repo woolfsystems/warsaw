@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>test</title>
+        <script src="https://cdn.jsdelivr.net/npm/socket.io-client@2/dist/socket.io.js"></script>
+        <style>
+            span.indicator {
+                display: block;
+                background-color: red;
+                border-radius: 50%;
+                width: 1em;
+                height: 1em;
+                border: 0.05em solid rgba(0,0,0,0.55);
+                box-shadow: 0 0 0.2em black;
+                position: absolute;
+                top: 0.5em;
+                right: 0.5em;
+            }
+            ul#messageLog{
+                list-style: none;
+            }
+            body.connected > span.indicator{
+                background-color: green;
+            }
+        </style>
+    </head>
+    <body>
+        <ul id="messageLog">
+        </ul>
+        <span class='indicator'></span>
+        <script>
+            var socket = io(':4000');
+            socket.on('connect', function(){
+                console.log('<-CONNECT')
+                document.querySelector('body').classList.add('connected')
+            });
+            socket.on('request', function(data){
+                console.log('REQ->',data)
+                let newMessage = document.createElement('li')
+                newMessage.innerText = JSON.stringify(data)
+                document.getElementById('messageLog').appendChild(newMessage)
+            })
+            socket.on('event', function(data){
+                console.log('EVENT->',data)
+            });
+            socket.on('disconnect', function(){
+                console.error('<-DISCONNECT')
+                document.querySelector('body').classList.remove('connected')
+            });
+        </script>
+    </body>
+</html>

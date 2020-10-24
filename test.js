@@ -1,4 +1,3 @@
-import {DustBroker,DustService} from './index.js'
+import {DustBrokerAscoltatori,DustService,DustGatewaySocketIO,DustGatewayExpressStatic} from './index.js'
 
-let broker = new DustBroker([new DustService()])
-broker.call('test.ping')
+let broker = new DustBrokerAscoltatori([new DustService()], [new DustGatewaySocketIO({port: 4000, host: 'localhost'}),new DustGatewayExpressStatic({port: 3000, host: 'localhost', serve: 'public'})])

@@ -12,8 +12,15 @@
   "license": "ISC",
   "dependencies": {
     "ascoltatori": "^4.3.0",
+    "chalk": "^4.1.0",
     "common-errors": "^1.2.0",
+    "cors": "^2.8.5",
     "errors": "^0.3.0",
-    "generic-errors": "^2.2.1"
+    "express": "^4.17.1",
+    "farmhash": "^3.1.0",
+    "generic-errors": "^2.2.1",
+    "loglevel": "^1.7.0",
+    "loglevel-plugin-prefix": "^0.8.4",
+    "socket.io": "^2.3.0"
   }
 }
