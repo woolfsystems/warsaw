@@ -5,7 +5,7 @@ import cors from 'cors'
 class DustGatewayWorker{
     constructor(_options = {allowCORS: true}){
         this.options = _options
-        process.send('init')
+        process.send('init:begin')
         let app = new express()
         if(_options.allowCORS)
             app.use(cors())
@@ -21,22 +21,22 @@ class DustGatewayWorker{
         //io.adapter(sio_redis({ host: 'localhost', port: 6379 }));
 
         process.on('message', (message, connection) => {
-            if(message !== 'sticky-session:connection'){
+            if(message === 'worker:shutdown'){
+                this.shutdown()
                 return
             }
-            if(message !== 'worker:shutdown'){
-                this.shutdown()
+            if(message !== 'sticky-session:connection'){
                 return
             }
             server.emit('connection', connection)
             connection.resume()
         })
-        process.send('complete')
-   }
-   shutdown(){
-       console.log('SHUTDOWN')
-       process.exit(0)
-   }
+        process.send('init:complete')
+    }
+    shutdown(){
+        process.send('shutdown:begin')
+        process.send('shutdown:complete')
+    }
 }
 
 new DustGatewayWorker({host: process.env.MASTER_HOST, port: process.env.MASTER_PORT, allowCORS: process.env.ALLOW_CORS})

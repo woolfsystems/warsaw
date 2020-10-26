@@ -4,7 +4,7 @@ import cors from 'cors'
 class DustGatewayWorker{
     constructor(_options = {allowCORS: true}){
         this.options = _options
-        process.send('init')
+        process.send('init:begin')
         let app = new express()
         app.use(express.static(this.options.path))
         if(_options.allowCORS)
@@ -12,21 +12,21 @@ class DustGatewayWorker{
 
         let server = app.listen(0, this.options.host)
         process.on('message', (message, connection) => {
-            if(message !== 'sticky-session:connection'){
+            if(message === 'worker:shutdown'){
+                this.shutdown()
                 return
             }
-            if(message !== 'worker:shutdown'){
-                this.shutdown()
+            if(message !== 'sticky-session:connection'){
                 return
             }
             server.emit('connection', connection)
             connection.resume()
         })
-        process.send('complete')
+        process.send('init:complete')
     }
     shutdown(){
-        console.log('SHUTDOWN')
-        process.exit(0)
+        process.send('shutdown:begin')
+        process.send('shutdown:complete')
     }
 }
 

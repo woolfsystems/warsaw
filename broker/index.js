@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import prefix from 'loglevel-plugin-prefix'
-
+import {EventEmitter} from 'events'
 const log_colors = {
   TRACE: chalk.magenta,
   DEBUG: chalk.cyan,
@@ -19,14 +19,12 @@ const CALL_CHANNEL = '__CALL__'
 const GATEWAY_CHANNEL = '__GATEWAY__'
 
 class DustSocket{
-    constructor(_options){
+    constructor(_broker, _options){
+        this.broker = _broker
         this.options = _options
         this.socket = net.createServer({ pauseOnConnect: true})
-        this.socket.on('lookup',(parms)=>{
-            console.log('LOOKUP',parms)
-        })
         this.socket.listen({...this.options, exclusive: true},()=>{
-            console.log("LISTENING",this.options)
+            this.broker.log.info('[NET]','listening',this.options)
         })
         this.socket.on('error', (err) => {
             throw err
@@ -35,17 +33,27 @@ class DustSocket{
     attachHandler(_handler){
         this.socket.on('connection',_handler)
     }
+    shutdown(){
+        this.broker.log.info('[NET]','shutdown','begin')
+        return new Promise((resolve,reject)=>{
+            this.socket.close(resolve)
+        }).then(()=>{
+            this.broker.log.info('[NET]','shutdown','complete')
+        })
+    }
 }
-class DustBroker{
-    constructor(serviceList = [], gatewayList = []){
+class DustBroker extends EventEmitter{
+    constructor(_options){
+        super()
         this.log = loglevel
         prefix.reg(this.log)
         prefix.apply(this.log, {
-            nameFormatter(){
-                return 'DUST'
+            nameFormatter(_name){
+                _name = 'DUST'
+                return `[${_name}]`
             },
             format(level, name, timestamp) {
-                return `${chalk.gray(`[${timestamp}]`)} ${log_colors[level.toUpperCase()](level)} ${chalk.yellow.bold(`[${name}]`)}`
+                return `${chalk.gray(`[${timestamp}]`)} ${log_colors[level.toUpperCase()](level)} ${chalk.yellow.bold(`${name}`)}`
             },
         })
         prefix.apply(this.log.getLogger('critical'), {
@@ -60,21 +68,31 @@ class DustBroker{
         this.gateway = []
         this.service = []
         this.net = []
+
+        setTimeout(()=>
+            this.shutdown(),20000)
         
         try{
-            this.setupPubSub().then(()=>
-                this.loadServices(serviceList)).then(()=>
-                this.loadGateways(gatewayList)).then(()=>{
-                    setTimeout(()=>
-                    this.gateway.forEach(_g=>_g.shutdown()),3000)
-                })
+            this.setupPubSub()
+                .then(()=>this.loadServices(_options.services))
+                .then(()=>this.loadGateways(_options.gateways))
+                .then(()=>this.emit('started'))
         }catch(e){
             this.log.error('[BROKER]','initialisation error',e)
             this.shutdown()
         }
     }
     shutdown(){
-        this.log.warn('[BROKER]','shutting down')
+        this.log.info('[BROKER]','shutdown','begin')
+        Promise.all(this.gateway.map(_gw=>
+            _gw.shutdown().then(()=>
+                this.findSocket(_gw.options).shutdown()
+            )))
+        .then(()=>{
+            this.log.info('[BROKER]','shutdown','complete')
+            this.emit('shutdown')
+            process.exit(0)
+        })
     }
     setupServiceListener(){
         this.pubsub.subscribe(SERVICE_CHANNEL, (_, serviceSchema) => {
@@ -108,7 +126,7 @@ class DustBroker{
     findSocket(_options){
         let _net=undefined,_net_index = this.net.findIndex(_net => _net.options.port===_options.port && _net.options.host===_options.host)
         if(_net_index===-1){
-            _net = new DustSocket(_options)
+            _net = new DustSocket(this,_options)
             this.net.push(_net)
         }
         else
