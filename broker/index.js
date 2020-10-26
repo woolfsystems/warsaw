@@ -62,21 +62,21 @@ class DustBroker extends EventEmitter{
             },
         })
         this.log.enableAll()
-
-        this.log.info('[BROKER]','init')
+        this.log.info('[BROKER]','init','begin')
         
         this.gateway = []
         this.service = []
         this.net = []
 
-        setTimeout(()=>
-            this.shutdown(),20000)
         
         try{
             this.setupPubSub()
                 .then(()=>this.loadServices(_options.services))
                 .then(()=>this.loadGateways(_options.gateways))
-                .then(()=>this.emit('started'))
+                .then(()=>{
+                    this.log.info('[BROKER]','init','complete')
+                    this.emit('started')
+                })
         }catch(e){
             this.log.error('[BROKER]','initialisation error',e)
             this.shutdown()
@@ -106,7 +106,7 @@ class DustBroker extends EventEmitter{
         throw new errors.NotImplementedError()
     }
     attachBroker(element){
-        element.init(this)
+        return element.init(this)
     }
     loadServices(serviceList){
         this.log.trace('[LOAD]','services')
@@ -115,8 +115,8 @@ class DustBroker extends EventEmitter{
     }
     loadGateways(gatewayList){
         this.log.trace('[LOAD]','gateways')
-        gatewayList.forEach(gatewayClass =>
-            this.addGateway(this.node_id, gatewayClass))
+        return Promise.all(gatewayList.map(gatewayClass =>
+            this.addGateway(this.node_id, gatewayClass)))
     }
     addService(node, serviceClass){
         this.attachBroker(serviceClass)
@@ -142,6 +142,9 @@ class DustBroker extends EventEmitter{
         this.gateway.push(gatewayClass)
         this.pubsub.publish(GATEWAY_CHANNEL, gatewayClass.extractSchema(), ()=>
             this.log.trace('[PUB]', node, gatewayClass))
+        
+        return new Promise((resolve,reject)=>
+            gatewayClass.once('started',resolve))
     }
     call(serviceRef){
         this.log.trace('[CALL]',serviceRef)

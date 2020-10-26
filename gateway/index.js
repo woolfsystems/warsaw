@@ -23,10 +23,13 @@ class DustGateway extends EventEmitter{
     }
     init(_broker){
         this.broker = _broker
+        this.broker.log.warn(`[${this.name}]`,'init','begin')
         this.configure()
-        this.setupMaster()
-        this.state = GATEWAY_STATE_STARTED
-        this.emit('started')
+        return this.setupMaster().then(()=>{
+            this.state = GATEWAY_STATE_STARTED
+            this.broker.log.warn(`[${this.name}]`,'init', 'complete')
+            this.emit('started')
+        })
     }
     configure(){
         throw new errors.NotImplementedError()
@@ -41,11 +44,10 @@ class DustGateway extends EventEmitter{
         this.workers[worker_id].send('sticky-session:connection', connection)
     }
     setupMaster(){
-        this.broker.log.info('[MASTER]','setup')
         this.workers = []
-        for (var i = 0; i < num_processes; i++) {
-            this.spawnWorker(i)
-        }
+        return Promise.all(new Array(num_processes).fill(0).map((_,_i)=>
+            new Promise((resolve,reject)=>
+                this.spawnWorker(_i).once('started',resolve))))
     }
     spawnWorker(i) {
         this.workers[i] = cluster.fork({MASTER_HOST: this.options.host, MASTER_PORT: this.options.port, MASTER_PATH: this.options.serve})
@@ -59,8 +61,11 @@ class DustGateway extends EventEmitter{
             let [_section,_status] = _code.split(':')
             if(_code === 'shutdown:complete')
                 this.workers[i].emit('shutdown')
+            if(_code === 'init:complete')
+                this.workers[i].emit('started')
             this.broker.log.trace(`[${this.name}]`,_section,_status,_message)
         })
+        return this.workers[i]
     }
     getWorkerIndex(ip, len) {
         return farmhash.fingerprint32(ip) % len // Farmhash is the fastest and works with IPv6, too

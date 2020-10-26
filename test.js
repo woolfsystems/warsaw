@@ -7,4 +7,7 @@ let broker = new DustBrokerAscoltatori({
     gateways: [
         new DustGatewaySocketIO({port: 4000, host: 'localhost'}),new DustGatewayExpressStatic({port: 3000, host: 'localhost', serve: 'public'})
     ]
+}).once('started',()=>{
+    setTimeout(()=>
+            broker.shutdown(),1000)
 })
