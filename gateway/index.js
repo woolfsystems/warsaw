@@ -1,4 +1,4 @@
-import {EventEmitter} from 'events'
+import {DustState, DUST_STATE_INITIAL, DUST_STATE_TERMINATING, DUST_STATE_RUNNING, DUST_STATE_SHUTDOWN} from '../lib/DustState.js'
 
 import cluster from 'cluster'
 import os from 'os'
@@ -11,26 +11,34 @@ let { constant, scan, merge, tap, runEffects, fromPromise, fromEvent } = most
 
 const num_processes = os.cpus().length
 
-const GATEWAY_STATE_SHUTDOWN = Symbol('GW_STATE_SHUTDOWN')
-const GATEWAY_STATE_INIT = Symbol('GW_STATE_INIT')
-const GATEWAY_STATE_STARTED = Symbol('GW_STATE_STARTED')
 
-class DustGateway extends EventEmitter{
+class DustListener extends DustState{
+    constructor(){
+        super()
+    }
+    next(i){
+        console.log(i)
+    }
+    error(err){
+        console.error(err)
+    }
+    complete(){
+        console.log('COMPLETE')
+    }
+}
+class DustGateway extends DustListener{
     constructor(_options){
         if(typeof _options==='undefined')
             throw new errors.ValidationError('No binding options passed to DustGateway')
         super()
         this.name = this.constructor.name
         this.options = _options
-        this.state = GATEWAY_STATE_INIT
     }
     init(_broker){
         this.broker = _broker
-        this.broker.log.warn(`[${this.name}]`,'init','begin')
         this.configure()
         return this.setupMaster().then(()=>{
-            this.state = GATEWAY_STATE_STARTED
-            this.broker.log.warn(`[${this.name}]`,'init', 'complete')
+            this.state = DUST_STATE_RUNNING
             this.emit('started')
         })
     }
@@ -41,7 +49,7 @@ class DustGateway extends EventEmitter{
         throw new errors.NotImplementedError()
     }
     handler(connection){
-        if(this.state === GATEWAY_STATE_SHUTDOWN){
+        if(this.state === DUST_STATE_SHUTDOWN){
             this.broker.log.warn(`[${this.name}]`,'discarding incoming connection')
             return
         }
@@ -59,7 +67,7 @@ class DustGateway extends EventEmitter{
         this.workers[i] = cluster.fork({MASTER_HOST: this.options.host, MASTER_PORT: this.options.port, MASTER_PATH: this.options.serve})
 
         this.workers[i].on('exit',(_code, _signal) => {
-            if(this.state === GATEWAY_STATE_SHUTDOWN)
+            if(this.state === DUST_STATE_SHUTDOWN)
                 return
             this.broker.log.warn(`[${this.name}]`,'respawning worker', i)
             this.spawnWorker(i)
@@ -69,7 +77,7 @@ class DustGateway extends EventEmitter{
                 this.workers[i].emit('shutdown')
             if(_code === 'init:complete')
                 this.workers[i].emit('started')
-            this.broker.log.trace(`[${this.name}]`,_section,_status,_message)
+            this.broker.log.info(`[${this.name}]`,_section,_status,_message)
         })
         return this.workers[i]
     }
@@ -82,8 +90,7 @@ class DustGateway extends EventEmitter{
         }
     }
     shutdown(){
-        this.broker.log.info(`[${this.name}]`,'GW','shutdown','begin')
-        this.state = GATEWAY_STATE_SHUTDOWN
+        this.state = DUST_STATE_TERMINATING
         return Promise.all(this.workers.map(worker=>
             new Promise((resolve, reject)=>{
                 worker
@@ -94,7 +101,7 @@ class DustGateway extends EventEmitter{
                     .send('worker:shutdown')
             })
         )).then(()=>{
-            this.broker.log.info(`[${this.name}]`,'GW','shutdown','complete')
+            this.state = DUST_STATE_SHUTDOWN
             this.emit('shutdown')
         })
     }

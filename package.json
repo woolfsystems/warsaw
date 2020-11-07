@@ -24,6 +24,7 @@
     "loglevel": "^1.7.0",
     "loglevel-plugin-prefix": "^0.8.4",
     "most-from-event": "^1.1.2",
-    "socket.io": "^2.3.0"
+    "socket.io": "^2.3.0",
+    "xstream": "^11.14.0"
   }
 }
