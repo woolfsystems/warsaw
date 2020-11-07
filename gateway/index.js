@@ -6,6 +6,9 @@ import errors from 'common-errors'
     //sio_redis = require('socket.io-redis'),
 import farmhash from 'farmhash'
 
+import most from '@most/core'
+let { constant, scan, merge, tap, runEffects, fromPromise, fromEvent } = most
+
 const num_processes = os.cpus().length
 
 const GATEWAY_STATE_SHUTDOWN = Symbol('GW_STATE_SHUTDOWN')
@@ -30,6 +33,9 @@ class DustGateway extends EventEmitter{
             this.broker.log.warn(`[${this.name}]`,'init', 'complete')
             this.emit('started')
         })
+    }
+    call(_method,_meta){
+        most.fromPromise(promise)
     }
     configure(){
         throw new errors.NotImplementedError()

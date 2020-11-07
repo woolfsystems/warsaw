@@ -11,6 +11,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@most/core": "^1.6.1",
+    "@most/scheduler": "^1.3.0",
     "ascoltatori": "^4.3.0",
     "chalk": "^4.1.0",
     "common-errors": "^1.2.0",
@@ -21,6 +23,7 @@
     "generic-errors": "^2.2.1",
     "loglevel": "^1.7.0",
     "loglevel-plugin-prefix": "^0.8.4",
+    "most-from-event": "^1.1.2",
     "socket.io": "^2.3.0"
   }
 }
